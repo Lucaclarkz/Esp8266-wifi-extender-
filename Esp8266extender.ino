@@ -2,7 +2,6 @@
 #include <WiFiClient.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <ArduinoJson.h>
 #include <FS.h>
 #include <LittleFS.h>
 
@@ -13,15 +12,18 @@ extern "C" {
 }
 
 AsyncWebServer server(80);
-DynamicJsonDocument Config(2048);
 
-bool RepeaterIsWorking = true;
 unsigned long previousMillis = 0;
 long delay_time = 0;
 int ledState = LOW;
 
 class wifi_ext {
 public:
+    String ssid = "";
+    String pass = "";
+    String ap   = "";
+    String user = "";
+
     void create_server() {
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
             String network_html = "";
@@ -51,17 +53,17 @@ public:
         });
 
         server.on("/credentials", HTTP_GET, [](AsyncWebServerRequest *request) {
-            if (request->hasParam("ssid")) Config["ssid"] = request->getParam("ssid")->value();
-            if (request->hasParam("user")) Config["user"] = request->getParam("user")->value();
-            if (request->hasParam("pass")) Config["pass"] = request->getParam("pass")->value();
-            if (request->hasParam("ap"))   Config["ap"]   = request->getParam("ap")->value();
+            String ssid = request->hasParam("ssid") ? request->getParam("ssid")->value() : "";
+            String user = request->hasParam("user") ? request->getParam("user")->value() : "";
+            String pass = request->hasParam("pass") ? request->getParam("pass")->value() : "";
+            String ap   = request->hasParam("ap")   ? request->getParam("ap")->value()   : "";
 
-            String output;
-            serializeJson(Config, output);
-
-            File file = LittleFS.open("/config.json", "w");
+            File file = LittleFS.open("/config.txt", "w");
             if (file) {
-                file.print(output);
+                file.println(ssid);
+                file.println(pass);
+                file.println(ap);
+                file.println(user);
                 file.close();
             }
 
@@ -71,24 +73,22 @@ public:
         });
     }
 
-    String get_credentials(int a) {
-        File file = LittleFS.open("/config.json", "r");
-        if (!file) return "null";
+    bool load_credentials() {
+        File file = LittleFS.open("/config.txt", "r");
+        if (!file) return false;
 
-        String content = file.readString();
+        ssid = file.readStringUntil('\n');
+        pass = file.readStringUntil('\n');
+        ap   = file.readStringUntil('\n');
+        user = file.readStringUntil('\n');
         file.close();
 
-        DeserializationError err = deserializeJson(Config, content);
-        if (err) return "null";
+        ssid.trim();
+        pass.trim();
+        ap.trim();
+        user.trim();
 
-        String creds[] = {
-            Config["ssid"] | "",
-            Config["pass"] | "",
-            Config["ap"]   | "",
-            Config["user"] | ""
-        };
-
-        return creds[a];
+        return ssid.length() > 0;
     }
 };
 
@@ -102,21 +102,23 @@ void setup() {
         Serial.println("LittleFS mount failed");
     }
 
-    String ssid = my_wifi.get_credentials(0);
-    String pass = my_wifi.get_credentials(1);
-    String ap   = my_wifi.get_credentials(2);
-    String user = my_wifi.get_credentials(3);
+    bool hasConfig = my_wifi.load_credentials();
 
-    if (ssid == "null" || ssid == "") {
+    if (!hasConfig) {
         WiFi.mode(WIFI_AP);
         WiFi.softAP("Pius_Extender_Setup");
         my_wifi.create_server();
         server.begin();
         delay_time = 1000;
     } else {
+        String ssid = my_wifi.ssid;
+        String pass = my_wifi.pass;
+        String ap   = my_wifi.ap;
+        String user = my_wifi.user;
+
         WiFi.mode(WIFI_AP_STA);
 
-        if (user != "" && user != "null") {
+        if (user != "") {
             struct station_config sta_conf;
             wifi_station_get_config(&sta_conf);
             os_memset(sta_conf.ssid, 0, 32);
@@ -139,7 +141,7 @@ void setup() {
         ip_napt_init(1000, 10);
         ip_napt_enable_no(SOFTAP_IF, 1);
 
-        if (ap == "" || ap == "null") ap = "Pius_Extender";
+        if (ap == "") ap = "Pius_Extender";
         WiFi.softAP(ap.c_str(), pass.c_str());
 
         delay_time = 200;
