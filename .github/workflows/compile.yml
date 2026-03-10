@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # v3 မှ v4 သို့ ပြောင်းရန်
 
       - name: Install Arduino CLI
         run: |
@@ -27,10 +27,11 @@ jobs:
 
       - name: Compile Sketch
         run: |
+          # main.ino ဖိုင်နာမည် မှန်အောင် စစ်ပါ (ဥပမာ- sketch_name.ino ဆိုရင် အဲဒီအတိုင်း ပြောင်းရေးပါ)
           arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir ./build ./main.ino
 
       - name: Upload Binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # v3 မှ v4 သို့ ပြောင်းရန်
         with:
           name: esp8266-firmware
           path: ./build/*.bin
