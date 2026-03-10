@@ -31,15 +31,17 @@ jobs:
           arduino-cli lib install "ESP Async WebServer"
           arduino-cli lib install "ArduinoJson"
 
+      - name: Prepare Sketch
+        run: |
+          mkdir sketch
+          cp Esp8266extender.ino sketch/sketch.ino
+
       - name: Compile Sketch
         run: |
           arduino-cli compile \
             --fqbn esp8266:esp8266:nodemcuv2 \
             --output-dir ./build \
-            ./Esp8266extender
-
-      - name: Show build files
-        run: ls -R ./build
+            ./sketch
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
