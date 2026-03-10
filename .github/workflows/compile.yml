@@ -27,10 +27,12 @@ jobs:
 
       - name: Compile Sketch
         run: |
-          arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir ./build ./main.ino
+          # လက်ရှိ folder ထဲက .ino ဖိုင်မှန်သမျှကို ရှာပြီး compile လုပ်ခိုင်းတာပါ
+          arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 --output-dir ./build ./*.ino
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
         with:
           name: esp8266-firmware
           path: ./build/*.bin
+          
